@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>想想看要買哪個</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-8 border border-slate-200">
+        <h2 class="text-2xl font-black text-slate-800 mb-6 text-center">想想看要買哪個 🤔</h2>
+        
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
+                <input type="text" id="itemName" placeholder="例如：iPad Air" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
+                <input type="number" id="amount" placeholder="輸入預計花費" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-600 mb-1">換算股票標的</label>
+                <select id="stockSymbol" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 bg-white">
+                    <option value="2330">2330 台積電</option>
+                    <option value="0050">0050 元大台灣50</option>
+                </select>
+            </div>
+            <button onclick="calculate()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition duration-300 shadow-lg">
+                換算股數
+            </button>
+        </div>
+
+        <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden">
+            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
+            <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
+            <div class="my-4">
+                <span class="text-4xl font-black text-blue-600" id="resShares">0</span>
+                <span class="text-lg font-bold text-slate-900 ml-1">股</span>
+            </div>
+            <p class="text-[10px] text-slate-400 italic font-mono">* 參考收盤價：<span id="resPrice">--</span> (2026/04/15 數據)</p>
+        </div>
+    </div>
+
+    <script>
+        function calculate() {
+            const item = document.getElementById('itemName').value || "該項目";
+            const amount = document.getElementById('amount').value;
+            const stockSymbol = document.getElementById('stockSymbol').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!amount || amount <= 0) {
+                alert('請輸入金額');
+                return;
+            }
+
+            // 2026/04/15 實際參考價格 (台積電 2080, 0050 預估值)
+            const realPrices = { 
+                "2330": 2080, 
+                "0050": 184.15 
+            }; 
+
+            const price = realPrices[stockSymbol];
+            const shares = (amount / price).toFixed(4);
+
+            document.getElementById('resItem').innerText = item;
+            document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
+            document.getElementById('resShares').innerText = shares;
+            document.getElementById('resPrice').innerText = price;
+            
+            resultDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
