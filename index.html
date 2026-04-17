@@ -3,8 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>想想你要買哪個</title>
+    <title>想想你要買哪個 🤔</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 <body class="bg-slate-100 p-4 md:p-8 min-h-screen flex items-center justify-center">
 
@@ -14,7 +23,7 @@
         <div class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
-                <input type="text" id="itemName" placeholder="例如：iPad Air" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                <input type="text" id="itemName" placeholder="例如：蘿蔔絲餅" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
@@ -34,13 +43,26 @@
         </div>
 
         <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden animate-fade-in">
-            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預預算...</p>
+            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
             <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
+            
             <div class="my-4">
                 <span class="text-5xl font-black text-blue-600" id="resShares">0</span>
                 <span class="text-lg font-bold text-slate-900 ml-1">股</span>
             </div>
-            <p class="text-[10px] text-slate-400 italic font-mono leading-tight">
+
+            <div class="mt-4 pt-4 border-t border-blue-200">
+                <p class="text-slate-600 text-sm italic">
+                    這筆錢若投入市場，5年後預估增值為：
+                </p>
+                <div class="mt-1">
+                    <span class="text-2xl font-bold text-emerald-600 font-mono">NT$ </span>
+                    <span id="resFutureValue" class="text-3xl font-black text-emerald-600">0</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">* 依年化報酬率 5% 複利計算</p>
+            </div>
+
+            <p class="text-[10px] text-slate-400 italic font-mono leading-tight mt-4">
                 * 參考收盤價：<span id="displayPrice" class="font-bold underline text-slate-500">--</span> (TWD)<br>
                 * 數據更新日期：<span id="dataDate" class="font-bold text-slate-500">--</span>
             </p>
@@ -48,7 +70,7 @@
     </div>
 
     <script>
-        // 請在此處填入你的 FinMind Token
+        // 💡 記得去 FinMind 官網申請你的 Token 填在這裡
         const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiaWV3bmF1c2giLCJlbWFpbCI6InJ1YnkwOTI4QGdtYWlsLmNvbSJ9.rJU32kyxsXnVE7A5Ykel8DEGaVmmjEM5aPJ6-oWUU7I"; 
 
         async function calculate() {
@@ -63,19 +85,17 @@
                 return;
             }
 
-            // UI 狀態回饋
             btn.innerText = "讀取即時股價中...";
             btn.disabled = true;
 
             try {
-                // 1. 處理時間邏輯
+                // 1. 判斷交易日期邏輯
                 const now = new Date();
                 const day = now.getDay(); 
                 const hour = now.getHours();
                 let targetDate = new Date();
 
-                // 判斷台股開收盤 (14:00 後才視為今日收盤同步)
-                // 若為週末(0,6) 或 週一至五 14:00 前，抓取前一交易日
+                // 若為週末或週一至五 14:00 前，則向前尋找最近一個交易日
                 const isWeekend = (day === 0 || day === 6);
                 const isBeforeUpdate = (hour < 14);
 
@@ -86,7 +106,7 @@
 
                 const dateString = targetDate.toISOString().split('T')[0];
 
-                // 2. 串接 FinMind API
+                // 2. 串接 API
                 const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
                 
                 const response = await fetch(url);
@@ -100,42 +120,35 @@
                     finalPrice = lastEntry.close;
                     finalDate = lastEntry.date;
                 } else {
-                    // API 沒抓到資料時的保底機制 (2026/04 參考價)
-                    console.warn("API 未回傳資料，採用保底價格");
+                    // API 失敗保底價 (2026/04 參考)
                     finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
                     finalDate = dateString + " (預估)";
                 }
 
-                // 3. 計算並渲染
+                // 3. 核心計算邏輯
                 const shares = (amount / finalPrice).toFixed(4);
+                // 複利公式: FV = PV * (1 + 0.05)^5
+                const futureValue = Math.round(amount * Math.pow(1.05, 5));
 
+                // 4. 渲染到 HTML 畫面上
                 document.getElementById('resItem').innerText = item;
                 document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
                 document.getElementById('resShares').innerText = shares;
                 document.getElementById('displayPrice').innerText = finalPrice;
                 document.getElementById('dataDate').innerText = finalDate;
+                document.getElementById('resFutureValue').innerText = futureValue.toLocaleString();
 
+                // 顯示結果區塊
                 resultDiv.classList.remove('hidden');
 
             } catch (error) {
                 console.error("發生錯誤:", error);
-                alert("抓取資料時發生錯誤，請檢查網路或 API Token");
+                alert("抓取資料失敗，請檢查網路或 API Token 設定");
             } finally {
                 btn.innerText = "換算股數";
                 btn.disabled = false;
             }
         }
     </script>
-
-    <style>
-        /* 簡單的淡入動畫 */
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
 </body>
 </html>
