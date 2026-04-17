@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,25 +10,36 @@
         .animate-fade-in {
             animation: fadeIn 0.5s ease-in-out forwards;
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
+
 <body class="bg-slate-100 p-4 md:p-8 min-h-screen flex items-center justify-center">
 
     <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8 border border-slate-200">
         <h2 class="text-2xl font-black text-slate-800 mb-6 text-center italic">想想你要買哪個 🤔</h2>
-        
+
         <div class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
-                <input type="text" id="itemName" placeholder="例如：蘿蔔絲餅" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                <input type="text" id="itemName" placeholder="例如：蘿蔔絲餅"
+                    class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
-                <input type="number" id="amount" placeholder="輸入預計花費" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                <input type="number" id="amount" placeholder="輸入預計花費"
+                    class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">換算股票標的</label>
@@ -37,7 +49,8 @@
                 </select>
             </div>
 
-            <button onclick="calculate()" id="btnText" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition duration-300 shadow-lg">
+            <button onclick="calculate()" id="btnText"
+                class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition duration-300 shadow-lg">
                 換算股數
             </button>
         </div>
@@ -45,7 +58,7 @@
         <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden animate-fade-in">
             <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
             <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
-            
+
             <div class="my-4">
                 <span class="text-5xl font-black text-blue-600" id="resShares">0</span>
                 <span class="text-lg font-bold text-slate-900 ml-1">股</span>
@@ -70,8 +83,7 @@
     </div>
 
     <script>
-        // 💡 記得去 FinMind 官網申請你的 Token 填在這裡
-        const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiaWV3bmF1c2giLCJlbWFpbCI6InJ1YnkwOTI4QGdtYWlsLmNvbSJ9.rJU32kyxsXnVE7A5Ykel8DEGaVmmjEM5aPJ6-oWUU7I"; 
+        const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wNC0xNyAyMDozNDo0MCIsInVzZXJfaWQiOiJpZXduYXVzaCIsImlwIjoiMS4xNjIuMTU2LjY1IiwiZXhwIjoxNzc3MDM0MDgwfQ.b0YUw6GXNtTcG44M9F-QF9-KOreVImtAPSoxSyR_Mbc";
 
         async function calculate() {
             const item = document.getElementById('itemName').value || "該項目";
@@ -85,70 +97,76 @@
                 return;
             }
 
-            btn.innerText = "讀取即時股價中...";
-            btn.disabled = true;
+            // --- 💡 LocalStorage 持久化快取邏輯 ---
+            let finalPrice;
+            let finalDate;
 
-            try {
-                // 1. 判斷交易日期邏輯
-                const now = new Date();
-                const day = now.getDay(); 
-                const hour = now.getHours();
-                let targetDate = new Date();
+            // 從瀏覽器「隨身碟」拿資料
+            const cachedData = JSON.parse(localStorage.getItem(`price_${stockSymbol}`));
+            const now = new Date();
 
-                // 若為週末或週一至五 14:00 前，則向前尋找最近一個交易日
-                const isWeekend = (day === 0 || day === 6);
-                const isBeforeUpdate = (hour < 14);
+            // 判斷條件：有資料 且 距離上次抓取小於 1 小時 (3600000 毫秒)
+            if (cachedData && (now - new Date(cachedData.timestamp) < 3600000)) {
+                console.log(`從 LocalStorage 讀取 ${stockSymbol}，省下一次 API！`);
+                finalPrice = cachedData.price;
+                finalDate = cachedData.date;
+            } else {
+                console.log(`${stockSymbol} 無快取或已過期，準備發送 API...`);
+                btn.innerText = "讀取中...";
+                btn.disabled = true;
 
-                if (isWeekend || isBeforeUpdate) {
-                    let offset = (day === 1) ? 3 : (day === 0) ? 2 : (day === 6) ? 1 : 1;
-                    targetDate.setDate(now.getDate() - offset);
-                }
+                try {
+                    // ... (這部分維持原本的日期判斷邏輯) ...
+                    let targetDate = new Date();
+                    if (now.getDay() === 0 || now.getDay() === 6 || now.getHours() < 14) {
+                        let offset = (now.getDay() === 1) ? 3 : (now.getDay() === 0) ? 2 : (now.getDay() === 6) ? 1 : 1;
+                        targetDate.setDate(now.getDate() - offset);
+                    }
+                    const dateString = targetDate.toISOString().split('T')[0];
 
-                const dateString = targetDate.toISOString().split('T')[0];
+                    const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
+                    const response = await fetch(url);
+                    const json = await response.json();
 
-                // 2. 串接 API
-                const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
-                
-                const response = await fetch(url);
-                const json = await response.json();
-                
-                let finalPrice;
-                let finalDate;
+                    if (json.data && json.data.length > 0) {
+                        const lastEntry = json.data[json.data.length - 1];
+                        finalPrice = lastEntry.close;
+                        finalDate = lastEntry.date;
 
-                if (json.data && json.data.length > 0) {
-                    const lastEntry = json.data[json.data.length - 1];
-                    finalPrice = lastEntry.close;
-                    finalDate = lastEntry.date;
-                } else {
-                    // API 失敗保底價 (2026/04 參考)
+                        // 💡 存入 LocalStorage，並加上當下的時間戳記
+                        const dataToCache = {
+                            price: finalPrice,
+                            date: finalDate,
+                            timestamp: new Date().toISOString()
+                        };
+                        localStorage.setItem(`price_${stockSymbol}`, JSON.stringify(dataToCache));
+                    } else {
+                        finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
+                        finalDate = dateString + " (預估)";
+                    }
+                } catch (error) {
+                    console.error(error);
                     finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
-                    finalDate = dateString + " (預估)";
+                    finalDate = "連線失敗";
+                } finally {
+                    btn.innerText = "換算股數";
+                    btn.disabled = false;
                 }
-
-                // 3. 核心計算邏輯
-                const shares = (amount / finalPrice).toFixed(4);
-                // 複利公式: FV = PV * (1 + 0.05)^5
-                const futureValue = Math.round(amount * Math.pow(1.05, 5));
-
-                // 4. 渲染到 HTML 畫面上
-                document.getElementById('resItem').innerText = item;
-                document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
-                document.getElementById('resShares').innerText = shares;
-                document.getElementById('displayPrice').innerText = finalPrice;
-                document.getElementById('dataDate').innerText = finalDate;
-                document.getElementById('resFutureValue').innerText = futureValue.toLocaleString();
-
-                // 顯示結果區塊
-                resultDiv.classList.remove('hidden');
-
-            } catch (error) {
-                console.error("發生錯誤:", error);
-                alert("抓取資料失敗，請檢查網路或 API Token 設定");
-            } finally {
-                btn.innerText = "換算股數";
-                btn.disabled = false;
             }
+            // --- 💡 快取邏輯結束 ---
+
+            // (剩下的計算與渲染邏輯維持不變...)
+            const shares = (amount / finalPrice).toFixed(4);
+            const futureValue = Math.round(amount * Math.pow(1.07, 5));
+            document.getElementById('resItem').innerText = item;
+            document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
+            document.getElementById('resShares').innerText = shares;
+            document.getElementById('displayPrice').innerText = finalPrice;
+            document.getElementById('dataDate').innerText = finalDate;
+            document.getElementById('resFutureValue').innerText = futureValue.toLocaleString();
+            resultDiv.classList.remove('hidden');
         }
     </script>
 </body>
+
 </html>
