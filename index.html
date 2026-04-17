@@ -2,73 +2,140 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>想想看要買哪個</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>想想你要買哪個</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 p-8">
-    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-8 border border-slate-200">
-        <h2 class="text-2xl font-black text-slate-800 mb-6 text-center">想想看要買哪個 🤔</h2>
+<body class="bg-slate-100 p-4 md:p-8 min-h-screen flex items-center justify-center">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8 border border-slate-200">
+        <h2 class="text-2xl font-black text-slate-800 mb-6 text-center italic">想想你要買哪個 🤔</h2>
         
         <div class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
-                <input type="text" id="itemName" placeholder="例如：iPad Air" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none">
+                <input type="text" id="itemName" placeholder="例如：iPad Air" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
-                <input type="number" id="amount" placeholder="輸入預計花費" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none">
+                <input type="number" id="amount" placeholder="輸入預計花費" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-600 mb-1">換算股票標的</label>
                 <select id="stockSymbol" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 bg-white">
-                    <option value="2330">2330 台積電</option>
+                    <option value="2330">2330 台積電 (TSMC)</option>
                     <option value="0050">0050 元大台灣50</option>
                 </select>
             </div>
-            <button onclick="calculate()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition duration-300 shadow-lg">
+
+            <button onclick="calculate()" id="btnText" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition duration-300 shadow-lg">
                 換算股數
             </button>
         </div>
 
-        <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden">
-            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
+        <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden animate-fade-in">
+            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預預算...</p>
             <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
             <div class="my-4">
-                <span class="text-4xl font-black text-blue-600" id="resShares">0</span>
+                <span class="text-5xl font-black text-blue-600" id="resShares">0</span>
                 <span class="text-lg font-bold text-slate-900 ml-1">股</span>
             </div>
-            <p class="text-[10px] text-slate-400 italic font-mono">* 參考收盤價：<span id="resPrice">--</span> (2026/04/15 數據)</p>
+            <p class="text-[10px] text-slate-400 italic font-mono leading-tight">
+                * 參考收盤價：<span id="displayPrice" class="font-bold underline text-slate-500">--</span> (TWD)<br>
+                * 數據更新日期：<span id="dataDate" class="font-bold text-slate-500">--</span>
+            </p>
         </div>
     </div>
 
     <script>
-        function calculate() {
+        // 請在此處填入你的 FinMind Token
+        const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiaWV3bmF1c2giLCJlbWFpbCI6InJ1YnkwOTI4QGdtYWlsLmNvbSJ9.rJU32kyxsXnVE7A5Ykel8DEGaVmmjEM5aPJ6-oWUU7I"; 
+
+        async function calculate() {
             const item = document.getElementById('itemName').value || "該項目";
-            const amount = document.getElementById('amount').value;
+            const amount = parseFloat(document.getElementById('amount').value);
             const stockSymbol = document.getElementById('stockSymbol').value;
             const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('btnText');
 
             if (!amount || amount <= 0) {
-                alert('請輸入金額');
+                alert('請輸入有效金額！');
                 return;
             }
 
-            // 2026/04/15 實際參考價格 (台積電 2080, 0050 預估值)
-            const realPrices = { 
-                "2330": 2080, 
-                "0050": 184.15 
-            }; 
+            // UI 狀態回饋
+            btn.innerText = "讀取即時股價中...";
+            btn.disabled = true;
 
-            const price = realPrices[stockSymbol];
-            const shares = (amount / price).toFixed(4);
+            try {
+                // 1. 處理時間邏輯
+                const now = new Date();
+                const day = now.getDay(); 
+                const hour = now.getHours();
+                let targetDate = new Date();
 
-            document.getElementById('resItem').innerText = item;
-            document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
-            document.getElementById('resShares').innerText = shares;
-            document.getElementById('resPrice').innerText = price;
-            
-            resultDiv.classList.remove('hidden');
+                // 判斷台股開收盤 (14:00 後才視為今日收盤同步)
+                // 若為週末(0,6) 或 週一至五 14:00 前，抓取前一交易日
+                const isWeekend = (day === 0 || day === 6);
+                const isBeforeUpdate = (hour < 14);
+
+                if (isWeekend || isBeforeUpdate) {
+                    let offset = (day === 1) ? 3 : (day === 0) ? 2 : (day === 6) ? 1 : 1;
+                    targetDate.setDate(now.getDate() - offset);
+                }
+
+                const dateString = targetDate.toISOString().split('T')[0];
+
+                // 2. 串接 FinMind API
+                const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
+                
+                const response = await fetch(url);
+                const json = await response.json();
+                
+                let finalPrice;
+                let finalDate;
+
+                if (json.data && json.data.length > 0) {
+                    const lastEntry = json.data[json.data.length - 1];
+                    finalPrice = lastEntry.close;
+                    finalDate = lastEntry.date;
+                } else {
+                    // API 沒抓到資料時的保底機制 (2026/04 參考價)
+                    console.warn("API 未回傳資料，採用保底價格");
+                    finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
+                    finalDate = dateString + " (預估)";
+                }
+
+                // 3. 計算並渲染
+                const shares = (amount / finalPrice).toFixed(4);
+
+                document.getElementById('resItem').innerText = item;
+                document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
+                document.getElementById('resShares').innerText = shares;
+                document.getElementById('displayPrice').innerText = finalPrice;
+                document.getElementById('dataDate').innerText = finalDate;
+
+                resultDiv.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("發生錯誤:", error);
+                alert("抓取資料時發生錯誤，請檢查網路或 API Token");
+            } finally {
+                btn.innerText = "換算股數";
+                btn.disabled = false;
+            }
         }
     </script>
+
+    <style>
+        /* 簡單的淡入動畫 */
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </body>
 </html>
