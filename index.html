@@ -12,160 +12,344 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 
-<body class="bg-slate-100 p-4 md:p-8 min-h-screen flex items-center justify-center">
+<body class="bg-slate-100 p-4 md:p-8 min-h-screen">
+    <div class="max-w-md mx-auto space-y-6">
 
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8 border border-slate-200">
-        <h2 class="text-2xl font-black text-slate-800 mb-6 text-center italic">想想你要買哪個 🤔</h2>
+        <!-- 計算機卡片 -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
+            <h2 class="text-2xl font-black text-slate-800 mb-6 text-center italic">想想你要買哪個 🤔</h2>
 
-        <div class="space-y-5">
-            <div>
-                <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
-                <input type="text" id="itemName" placeholder="例如：蘿蔔絲餅"
-                    class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
-                <input type="number" id="amount" placeholder="輸入預計花費"
-                    class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-600 mb-1">換算股票標的</label>
-                <select id="stockSymbol" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 bg-white">
-                    <option value="2330">2330 台積電 (TSMC)</option>
-                    <option value="0050">0050 元大台灣50</option>
-                </select>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">你現在想買什麼？</label>
+                    <input type="text" id="itemName" placeholder="例如：蘿蔔絲餅"
+                        class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">金額 (TWD)</label>
+                    <input type="number" id="amount" placeholder="輸入預計花費"
+                        class="w-full border-slate-300 rounded-xl shadow-sm border p-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">換算股票標的</label>
+                    <select id="stockSymbol" class="w-full border-slate-300 rounded-xl shadow-sm border p-3 bg-white">
+                        <option value="2330">2330 台積電 (TSMC)</option>
+                        <option value="0050">0050 元大台灣50</option>
+                    </select>
+                </div>
+
+                <button onclick="calculate()" id="calcBtn"
+                    class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition duration-300 shadow-lg">
+                    換算股數
+                </button>
             </div>
 
-            <button onclick="calculate()" id="btnText"
-                class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 active:scale-95 transition duration-300 shadow-lg">
-                換算股數
-            </button>
+            <!-- 換算結果 -->
+            <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden animate-fade-in">
+                <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
+                <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
+
+                <div class="my-4">
+                    <span class="text-5xl font-black text-blue-600" id="resShares">0</span>
+                    <span class="text-lg font-bold text-slate-900 ml-1">股</span>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-blue-200">
+                    <p class="text-slate-600 text-sm italic">這筆錢若投入市場，3年後預估增值為：</p>
+                    <div class="mt-1">
+                        <span class="text-2xl font-bold text-emerald-600 font-mono">NT$ </span>
+                        <span id="resFutureValue" class="text-3xl font-black text-emerald-600">0</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">* 依年化報酬率 5% 複利計算</p>
+                </div>
+
+                <p class="text-[10px] text-slate-400 italic font-mono leading-tight mt-4">
+                    * 參考收盤價：<span id="displayPrice" class="font-bold underline text-slate-500">--</span> (TWD)<br>
+                    * 數據更新日期：<span id="dataDate" class="font-bold text-slate-500">--</span>
+                </p>
+
+                <!-- 三個選項 -->
+                <div id="choiceButtons" class="hidden mt-6 pt-5 border-t border-blue-200">
+                    <p class="text-sm font-bold text-slate-700 mb-3">你決定怎麼做？</p>
+                    <div class="space-y-2">
+                        <button onclick="choiceBuy()"
+                            class="w-full bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 active:scale-95 transition text-sm shadow">
+                            😤 我需要它，買了！
+                        </button>
+                        <button onclick="choiceInvest()"
+                            class="w-full bg-emerald-500 text-white font-bold py-3 rounded-xl hover:bg-emerald-600 active:scale-95 transition text-sm shadow">
+                            📈 我選擇投資股票，紀錄下來
+                        </button>
+                        <button onclick="choiceSave()"
+                            class="w-full bg-violet-500 text-white font-bold py-3 rounded-xl hover:bg-violet-600 active:scale-95 transition text-sm shadow">
+                            🐷 存起來！把錢省下來
+                        </button>
+                        <button onclick="choiceNone()"
+                            class="w-full text-slate-400 font-medium py-2 rounded-xl hover:text-slate-600 transition text-xs">
+                            只是算好玩的，不紀錄
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="result" class="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100 hidden animate-fade-in">
-            <p class="text-slate-600 text-sm">若將購買 <span id="resItem" class="font-bold text-blue-700"></span> 的預算...</p>
-            <p class="text-slate-600 text-sm">投入到 <span id="resStock" class="font-bold text-slate-800"></span></p>
+        <!-- 紀錄區域 -->
+        <div id="recordsSection" class="hidden space-y-4">
 
-            <div class="my-4">
-                <span class="text-5xl font-black text-blue-600" id="resShares">0</span>
-                <span class="text-lg font-bold text-slate-900 ml-1">股</span>
-            </div>
-
-            <div class="mt-4 pt-4 border-t border-blue-200">
-                <p class="text-slate-600 text-sm italic">
-                    這筆錢若投入市場，5年後預估增值為：
-                </p>
-                <div class="mt-1">
-                    <span class="text-2xl font-bold text-emerald-600 font-mono">NT$ </span>
-                    <span id="resFutureValue" class="text-3xl font-black text-emerald-600">0</span>
+            <!-- 省下來的錢 -->
+            <div id="savingsCard" class="hidden bg-white rounded-2xl shadow-xl p-6 border border-violet-100 animate-fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-black text-violet-700">🐷 省下來的錢</h3>
+                    <div class="text-right">
+                        <div class="text-[10px] text-slate-400">累計節省</div>
+                        <div class="text-2xl font-black text-violet-600" id="totalSavings">NT$ 0</div>
+                    </div>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-1">* 依年化報酬率 5% 複利計算</p>
+                <div id="savingsList" class="space-y-1"></div>
             </div>
 
-            <p class="text-[10px] text-slate-400 italic font-mono leading-tight mt-4">
-                * 參考收盤價：<span id="displayPrice" class="font-bold underline text-slate-500">--</span> (TWD)<br>
-                * 數據更新日期：<span id="dataDate" class="font-bold text-slate-500">--</span>
-            </p>
+            <!-- 投資紀錄 -->
+            <div id="investCard" class="hidden bg-white rounded-2xl shadow-xl p-6 border border-emerald-100 animate-fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-black text-emerald-700">📈 投資紀錄</h3>
+                    <div class="text-right">
+                        <div class="text-[10px] text-slate-400">合計損益</div>
+                        <div class="text-xl font-black" id="totalPnl">--</div>
+                    </div>
+                </div>
+                <div id="investList" class="space-y-3"></div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wNC0xNyAyMDozNDo0MCIsInVzZXJfaWQiOiJpZXduYXVzaCIsImlwIjoiMS4xNjIuMTU2LjY1IiwiZXhwIjoxNzc3MDM0MDgwfQ.b0YUw6GXNtTcG44M9F-QF9-KOreVImtAPSoxSyR_Mbc";
+        const FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiaWV3bmF1c2giLCJlbWFpbCI6InJ1YnkwOTI4QGdtYWlsLmNvbSJ9.rJU32kyxsXnVE7A5Ykel8DEGaVmmjEM5aPJ6-oWUU7I";
 
+        let currentCalc = null;
+
+        // --- 取得股價（帶 1 小時快取）---
+        async function getPrice(stockSymbol) {
+            const cached = JSON.parse(localStorage.getItem(`price_${stockSymbol}`));
+            const now = new Date();
+            if (cached && (now - new Date(cached.timestamp) < 3600000)) {
+                return { price: cached.price, date: cached.date };
+            }
+            try {
+                let targetDate = new Date();
+                if (now.getDay() === 0 || now.getDay() === 6 || now.getHours() < 14) {
+                    const offset = now.getDay() === 1 ? 3 : now.getDay() === 0 ? 2 : 1;
+                    targetDate.setDate(now.getDate() - offset);
+                }
+                const dateString = targetDate.toISOString().split('T')[0];
+                const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
+                const json = await (await fetch(url)).json();
+                if (json.data && json.data.length > 0) {
+                    const last = json.data[json.data.length - 1];
+                    localStorage.setItem(`price_${stockSymbol}`, JSON.stringify({ price: last.close, date: last.date, timestamp: now.toISOString() }));
+                    return { price: last.close, date: last.date };
+                }
+                return { price: (stockSymbol === "2330") ? 2080 : 184.15, date: dateString + " (預估)" };
+            } catch {
+                return { price: (stockSymbol === "2330") ? 2080 : 184.15, date: "連線失敗" };
+            }
+        }
+
+        // --- 換算 ---
         async function calculate() {
-            const item = document.getElementById('itemName').value || "該項目";
+            const item = document.getElementById('itemName').value.trim() || "該項目";
             const amount = parseFloat(document.getElementById('amount').value);
             const stockSymbol = document.getElementById('stockSymbol').value;
-            const resultDiv = document.getElementById('result');
-            const btn = document.getElementById('btnText');
+            const btn = document.getElementById('calcBtn');
 
-            if (!amount || amount <= 0) {
-                alert('請輸入有效金額！');
-                return;
-            }
+            if (!amount || amount <= 0) { alert('請輸入有效金額！'); return; }
 
-            // --- 💡 LocalStorage 持久化快取邏輯 ---
-            let finalPrice;
-            let finalDate;
+            btn.innerText = "讀取中...";
+            btn.disabled = true;
 
-            // 從瀏覽器「隨身碟」拿資料
-            const cachedData = JSON.parse(localStorage.getItem(`price_${stockSymbol}`));
-            const now = new Date();
+            const { price: finalPrice, date: finalDate } = await getPrice(stockSymbol);
 
-            // 判斷條件：有資料 且 距離上次抓取小於 1 小時 (3600000 毫秒)
-            if (cachedData && (now - new Date(cachedData.timestamp) < 3600000)) {
-                console.log(`從 LocalStorage 讀取 ${stockSymbol}，省下一次 API！`);
-                finalPrice = cachedData.price;
-                finalDate = cachedData.date;
-            } else {
-                console.log(`${stockSymbol} 無快取或已過期，準備發送 API...`);
-                btn.innerText = "讀取中...";
-                btn.disabled = true;
+            btn.innerText = "換算股數";
+            btn.disabled = false;
 
-                try {
-                    // ... (這部分維持原本的日期判斷邏輯) ...
-                    let targetDate = new Date();
-                    if (now.getDay() === 0 || now.getDay() === 6 || now.getHours() < 14) {
-                        let offset = (now.getDay() === 1) ? 3 : (now.getDay() === 0) ? 2 : (now.getDay() === 6) ? 1 : 1;
-                        targetDate.setDate(now.getDate() - offset);
-                    }
-                    const dateString = targetDate.toISOString().split('T')[0];
-
-                    const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${stockSymbol}&start_date=${dateString}&token=${FINMIND_TOKEN}`;
-                    const response = await fetch(url);
-                    const json = await response.json();
-
-                    if (json.data && json.data.length > 0) {
-                        const lastEntry = json.data[json.data.length - 1];
-                        finalPrice = lastEntry.close;
-                        finalDate = lastEntry.date;
-
-                        // 💡 存入 LocalStorage，並加上當下的時間戳記
-                        const dataToCache = {
-                            price: finalPrice,
-                            date: finalDate,
-                            timestamp: new Date().toISOString()
-                        };
-                        localStorage.setItem(`price_${stockSymbol}`, JSON.stringify(dataToCache));
-                    } else {
-                        finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
-                        finalDate = dateString + " (預估)";
-                    }
-                } catch (error) {
-                    console.error(error);
-                    finalPrice = (stockSymbol === "2330") ? 2080 : 184.15;
-                    finalDate = "連線失敗";
-                } finally {
-                    btn.innerText = "換算股數";
-                    btn.disabled = false;
-                }
-            }
-            // --- 💡 快取邏輯結束 ---
-
-            // (剩下的計算與渲染邏輯維持不變...)
             const shares = (amount / finalPrice).toFixed(4);
-            const futureValue = Math.round(amount * Math.pow(1.07, 5));
+            const futureValue = Math.round(amount * Math.pow(1.05, 3));
+            const stockName = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
+
             document.getElementById('resItem').innerText = item;
-            document.getElementById('resStock').innerText = stockSymbol === "2330" ? "2330 台積電" : "0050 元大台灣50";
+            document.getElementById('resStock').innerText = stockName;
             document.getElementById('resShares').innerText = shares;
             document.getElementById('displayPrice').innerText = finalPrice;
             document.getElementById('dataDate').innerText = finalDate;
             document.getElementById('resFutureValue').innerText = futureValue.toLocaleString();
-            resultDiv.classList.remove('hidden');
+
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('choiceButtons').classList.remove('hidden');
+
+            currentCalc = {
+                item, amount,
+                shares: parseFloat(shares),
+                stockSymbol,
+                stockName: stockSymbol === "2330" ? "台積電" : "元大台灣50",
+                costPrice: finalPrice,
+                date: new Date().toISOString().split('T')[0]
+            };
         }
+
+        // --- 選項處理 ---
+        function hideChoices() {
+            document.getElementById('choiceButtons').classList.add('hidden');
+            currentCalc = null;
+        }
+
+        function choiceBuy() {
+            hideChoices();
+            showToast("💸 買了！希望值得！");
+        }
+
+        function choiceInvest() {
+            if (!currentCalc) return;
+            const list = JSON.parse(localStorage.getItem('impulse_investments') || '[]');
+            list.push({ id: Date.now(), ...currentCalc });
+            localStorage.setItem('impulse_investments', JSON.stringify(list));
+            hideChoices();
+            showToast("📈 投資紀錄已儲存！");
+            renderRecords();
+        }
+
+        function choiceSave() {
+            if (!currentCalc) return;
+            const list = JSON.parse(localStorage.getItem('impulse_savings') || '[]');
+            list.push({ id: Date.now(), item: currentCalc.item, amount: currentCalc.amount, date: currentCalc.date });
+            localStorage.setItem('impulse_savings', JSON.stringify(list));
+            hideChoices();
+            showToast("🐷 太棒了！省下來了！");
+            renderRecords();
+        }
+
+        function choiceNone() {
+            hideChoices();
+        }
+
+        // --- 刪除紀錄 ---
+        function deleteRecord(type, id) {
+            const key = type === 'invest' ? 'impulse_investments' : 'impulse_savings';
+            const list = JSON.parse(localStorage.getItem(key) || '[]').filter(r => r.id !== id);
+            localStorage.setItem(key, JSON.stringify(list));
+            renderRecords();
+        }
+
+        // --- 渲染紀錄 ---
+        async function renderRecords() {
+            const investments = JSON.parse(localStorage.getItem('impulse_investments') || '[]');
+            const savings = JSON.parse(localStorage.getItem('impulse_savings') || '[]');
+
+            document.getElementById('recordsSection').classList.toggle('hidden', investments.length === 0 && savings.length === 0);
+
+            // 省下來的錢
+            const savingsCard = document.getElementById('savingsCard');
+            if (savings.length > 0) {
+                savingsCard.classList.remove('hidden');
+                const total = savings.reduce((s, r) => s + r.amount, 0);
+                document.getElementById('totalSavings').innerText = `NT$ ${total.toLocaleString()}`;
+                document.getElementById('savingsList').innerHTML = savings.map(r => `
+                    <div class="flex items-center justify-between py-2 border-b border-violet-50 last:border-0 group">
+                        <div class="text-sm">
+                            <span class="font-bold text-slate-700">${r.item}</span>
+                            <span class="text-slate-500 ml-2">NT$ ${r.amount.toLocaleString()}</span>
+                            <span class="text-[10px] text-slate-300 ml-2">${r.date}</span>
+                        </div>
+                        <button onclick="deleteRecord('save', ${r.id})"
+                            class="text-slate-200 hover:text-red-400 transition text-lg leading-none opacity-0 group-hover:opacity-100">✕</button>
+                    </div>
+                `).join('');
+            } else {
+                savingsCard.classList.add('hidden');
+            }
+
+            // 投資紀錄
+            const investCard = document.getElementById('investCard');
+            if (investments.length > 0) {
+                investCard.classList.remove('hidden');
+
+                // 批次取得各標的現價
+                const symbols = [...new Set(investments.map(r => r.stockSymbol))];
+                const priceMap = {};
+                await Promise.all(symbols.map(async sym => {
+                    const { price } = await getPrice(sym);
+                    priceMap[sym] = price;
+                }));
+
+                let totalPnl = 0;
+                let allPricesLoaded = true;
+
+                document.getElementById('investList').innerHTML = investments.map(r => {
+                    const cp = priceMap[r.stockSymbol];
+                    if (cp == null) { allPricesLoaded = false; }
+                    const pnl = cp != null ? (cp - r.costPrice) * r.shares : null;
+                    if (pnl != null) totalPnl += pnl;
+                    const pnlColor = pnl == null ? 'text-slate-400' : pnl >= 0 ? 'text-emerald-600' : 'text-red-500';
+                    const pnlPct = pnl != null ? (((cp - r.costPrice) / r.costPrice) * 100).toFixed(2) : null;
+                    const pnlText = pnl == null
+                        ? '載入中...'
+                        : `${pnl >= 0 ? '+' : ''}NT$ ${Math.round(pnl).toLocaleString()} (${pnl >= 0 ? '+' : ''}${pnlPct}%)`;
+
+                    return `
+                        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 group">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <span class="font-black text-slate-700">${r.item}</span>
+                                    <span class="text-[10px] text-slate-400 ml-2">${r.date}</span>
+                                </div>
+                                <button onclick="deleteRecord('invest', ${r.id})"
+                                    class="text-slate-200 hover:text-red-400 transition text-lg leading-none opacity-0 group-hover:opacity-100 ml-2">✕</button>
+                            </div>
+                            <div class="mt-3 flex items-end justify-between">
+                                <div class="text-xs text-slate-500 leading-relaxed">
+                                    ${r.stockName} × <span class="font-bold text-slate-600">${r.shares}</span> 股<br>
+                                    成本 <span class="font-mono">NT$ ${r.costPrice.toLocaleString()}</span>
+                                    → 現價 <span class="font-bold font-mono text-slate-700">${cp != null ? `NT$ ${cp.toLocaleString()}` : '--'}</span>
+                                </div>
+                                <div class="text-right ml-4 shrink-0">
+                                    <div class="text-[10px] text-slate-400">損益</div>
+                                    <div class="font-black text-sm ${pnlColor}">${pnlText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 合計損益
+                const totalEl = document.getElementById('totalPnl');
+                if (allPricesLoaded) {
+                    totalEl.innerText = `${totalPnl >= 0 ? '+' : ''}NT$ ${Math.round(totalPnl).toLocaleString()}`;
+                    totalEl.className = `text-xl font-black ${totalPnl >= 0 ? 'text-emerald-600' : 'text-red-500'}`;
+                } else {
+                    totalEl.innerText = '--';
+                    totalEl.className = 'text-xl font-black text-slate-400';
+                }
+            } else {
+                investCard.classList.add('hidden');
+            }
+        }
+
+        // --- Toast 提示 ---
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm font-bold px-5 py-3 rounded-full shadow-xl animate-fade-in z-50 whitespace-nowrap';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2500);
+        }
+
+        // 頁面載入時渲染既有紀錄
+        renderRecords();
     </script>
 </body>
 
